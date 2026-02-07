@@ -260,6 +260,7 @@ with gr.Blocks() as demo:
                     type="pil",
                     height=400,
                     preview=False,
+                    format="png",
                 )
 
         prompt = gr.Text(
