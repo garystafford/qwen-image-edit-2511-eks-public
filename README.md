@@ -77,7 +77,7 @@ without rebuilding the heavy model container.
   +----------+             v             v                  v
                      +-----+-------------+---+       +------+------+
                      |         ECR           |       |    EKS      |
-                     |  qwen-model:v1        |------>|  Namespace:  |
+                     |  qwen-model:v1        |------>|  Namespace: |
                      |  qwen-ui:v1           |       |  qwen       |
                      +-----------------------+       +-------------+
 

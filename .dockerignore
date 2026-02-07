@@ -36,7 +36,6 @@ docs/
 # Kubernetes and infrastructure (not needed in containers)
 k8s/
 scripts/
-!scripts/download-model.py
 
 # IDE and editor files
 .vscode/
