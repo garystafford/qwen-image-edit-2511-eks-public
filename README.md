@@ -11,7 +11,7 @@ deployed on Amazon EKS with GPU acceleration.
 graph TD
     Users(["USERS"]) --> ALB["ALB Ingress<br/>HTTPS/443"]
 
-    ALB -- "/api, /health" --> Model["Model Service<br/>FastAPI · Port 8000<br/>NVIDIA L40S GPU<br/>~6GB image · 24Gi mem"]
+    ALB -- "/api, /health" --> Model["Model Service<br/>FastAPI · Port 8000<br/>NVIDIA L40S GPU<br/>~6GB image · 32Gi mem"]
     ALB -- "/ (all other)" --> UI["UI Service<br/>Gradio · Port 7860<br/>No GPU needed<br/>~200MB image · 512Mi mem"]
 
     UI -. "cluster DNS<br/>qwen-model-service.qwen.svc:8000" .-> Model
@@ -292,7 +292,7 @@ python scripts/batch_process_fastapi.py \
 │   │   ├── kustomization.yaml    # Replacement rules
 │   │   ├── namespace.yaml        # qwen namespace
 │   │   ├── serviceaccount.yaml   # IAM role for S3 access
-│   │   ├── deployment-model.yaml # Model pod (GPU, 24Gi)
+│   │   ├── deployment-model.yaml # Model pod (GPU, 32Gi)
 │   │   ├── deployment-ui.yaml    # UI pod (no GPU, 512Mi)
 │   │   ├── service-model.yaml    # ClusterIP :8000
 │   │   ├── service-ui.yaml       # ClusterIP :7860
@@ -324,7 +324,7 @@ python scripts/batch_process_fastapi.py \
 | Pod Startup (cached) | 10-15 sec              |
 | GPU Memory Usage     | ~18GB / 48GB (L40S)    |
 | Inference Speed      | ~3 sec per step        |
-| RAM Required         | 20GB                   |
+| RAM Required         | 24GB                   |
 | Storage per Node     | 20GB (model cache)     |
 
 ## AWS Requirements
