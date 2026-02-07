@@ -2,6 +2,21 @@
 # Install AWS Load Balancer Controller on EKS cluster
 # This enables ALB Ingress support for path-based routing
 
+usage() {
+    echo "Usage: $(basename "$0")"
+    echo ""
+    echo "Install the AWS Load Balancer Controller on the EKS cluster."
+    echo "Creates IAM policy/role and installs via Helm."
+    echo "Skips if the controller is already installed."
+    echo ""
+    echo "Environment:"
+    echo "  ALB_CONTROLLER_VERSION   Controller version (default: v2.9.2)"
+    echo ""
+    echo "Requires .env to be configured (see .env.example)."
+    exit 0
+}
+[[ "${1:-}" =~ ^(-h|--help)$ ]] && usage
+
 set -e
 source "$(dirname "$0")/common.sh"
 

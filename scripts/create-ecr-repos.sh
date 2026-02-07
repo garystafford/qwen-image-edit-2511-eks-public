@@ -1,6 +1,17 @@
 #!/bin/bash
 # Create ECR repositories for UI and Model containers
 
+usage() {
+    echo "Usage: $(basename "$0")"
+    echo ""
+    echo "Create ECR repositories for the UI and Model containers."
+    echo "Skips creation if repositories already exist."
+    echo ""
+    echo "Requires .env to be configured (see .env.example)."
+    exit 0
+}
+[[ "${1:-}" =~ ^(-h|--help)$ ]] && usage
+
 set -e
 source "$(dirname "$0")/common.sh"
 

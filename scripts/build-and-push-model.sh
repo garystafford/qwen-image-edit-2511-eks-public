@@ -4,6 +4,19 @@
 # Subsequent builds: ~2-3 minutes (if only server.py changes)
 # Push time: ~5 minutes (6GB image)
 
+usage() {
+    echo "Usage: $(basename "$0") [VERSION]"
+    echo ""
+    echo "Build and push the model container to ECR."
+    echo ""
+    echo "Arguments:"
+    echo "  VERSION   Image tag (default: v1)"
+    echo ""
+    echo "Requires .env to be configured (see .env.example)."
+    exit 0
+}
+[[ "${1:-}" =~ ^(-h|--help)$ ]] && usage
+
 set -e
 source "$(dirname "$0")/common.sh"
 

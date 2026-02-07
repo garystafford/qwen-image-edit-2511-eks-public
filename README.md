@@ -243,7 +243,17 @@ curl -X POST http://localhost:8000/api/v1/batch/infer \
 ### Batch Testing Script
 
 The batch script processes all images in `samples_images/`
-against the FastAPI endpoint:
+against the FastAPI endpoint.
+
+**Setup** (one-time):
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install requests
+```
+
+**Usage**:
 
 ```bash
 # Run with defaults

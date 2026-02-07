@@ -3,6 +3,20 @@
 # Script to check GPU instance availability across AWS availability zones
 # Usage: ./check-gpu-availability.sh [instance-type]
 
+usage() {
+    echo "Usage: $(basename "$0") [INSTANCE_TYPE]"
+    echo ""
+    echo "Check GPU instance availability across AWS availability zones."
+    echo "Tests capacity via dry-run launches and reports ASG status."
+    echo ""
+    echo "Arguments:"
+    echo "  INSTANCE_TYPE   EC2 instance type (default: g6e.xlarge)"
+    echo ""
+    echo "Requires .env to be configured (see .env.example)."
+    exit 0
+}
+[[ "${1:-}" =~ ^(-h|--help)$ ]] && usage
+
 source "$(dirname "$0")/common.sh"
 
 INSTANCE_TYPE="${1:-g6e.xlarge}"

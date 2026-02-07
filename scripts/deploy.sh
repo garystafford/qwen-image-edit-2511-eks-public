@@ -1,6 +1,17 @@
 #!/bin/bash
 # Deploy both UI and Model services using Kustomize
 
+usage() {
+    echo "Usage: $(basename "$0")"
+    echo ""
+    echo "Deploy Qwen Image Edit (UI + Model) to EKS using Kustomize."
+    echo "Applies the k8s/base/ overlay via kubectl apply -k."
+    echo ""
+    echo "Requires .env to be configured (see .env.example)."
+    exit 0
+}
+[[ "${1:-}" =~ ^(-h|--help)$ ]] && usage
+
 set -e
 source "$(dirname "$0")/common.sh"
 

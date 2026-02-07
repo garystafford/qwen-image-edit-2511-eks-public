@@ -2,6 +2,18 @@
 # Setup EKS prerequisites for Qwen Image Edit deployment
 # This script sets up IAM roles, EFS, and other required resources
 
+usage() {
+    echo "Usage: $(basename "$0")"
+    echo ""
+    echo "Setup EKS prerequisites for Qwen Image Edit deployment."
+    echo "Creates IAM roles (IRSA), EFS filesystem and mount targets,"
+    echo "EFS StorageClass, and verifies S3 bucket access."
+    echo ""
+    echo "Requires .env to be configured (see .env.example)."
+    exit 0
+}
+[[ "${1:-}" =~ ^(-h|--help)$ ]] && usage
+
 set -e
 source "$(dirname "$0")/common.sh"
 

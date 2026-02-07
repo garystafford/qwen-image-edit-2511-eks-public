@@ -1,6 +1,18 @@
 #!/bin/bash
 # Verify all prerequisites are met before deployment
 
+usage() {
+    echo "Usage: $(basename "$0")"
+    echo ""
+    echo "Verify all prerequisites for EKS deployment."
+    echo "Checks: AWS CLI, kubectl, cluster access, GPU nodes,"
+    echo "ALB controller, ECR repositories, and Docker."
+    echo ""
+    echo "Requires .env to be configured (see .env.example)."
+    exit 0
+}
+[[ "${1:-}" =~ ^(-h|--help)$ ]] && usage
+
 set -e
 source "$(dirname "$0")/common.sh"
 

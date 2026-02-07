@@ -2,6 +2,19 @@
 # Build and push both UI and Model containers to ECR
 # Total time: First build ~15 minutes, subsequent ~5-7 minutes
 
+usage() {
+    echo "Usage: $(basename "$0") [VERSION]"
+    echo ""
+    echo "Build and push both model and UI containers to ECR."
+    echo ""
+    echo "Arguments:"
+    echo "  VERSION   Image tag (default: v1)"
+    echo ""
+    echo "Requires .env to be configured (see .env.example)."
+    exit 0
+}
+[[ "${1:-}" =~ ^(-h|--help)$ ]] && usage
+
 set -e
 source "$(dirname "$0")/common.sh"
 
