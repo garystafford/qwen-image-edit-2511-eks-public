@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: qwen-ui
+  namespace: qwen
+  labels:
+    app: qwen-ui
+    component: frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: qwen-ui
+  template:
+    metadata:
+      labels:
+        app: qwen-ui
+        component: frontend
+    spec:
+      containers:
+        - name: ui
+          image: PLACEHOLDER_UI_IMAGE
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 7860
+              name: gradio
+          env:
+            - name: API_BASE_URL
+              value: http://qwen-model-service.qwen.svc.cluster.local:8000
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 7860
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 7860
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 3
+          resources:
+            limits:
+              cpu: "500m"
+              memory: "1Gi"
+            requests:
+              cpu: "200m"
+              memory: "512Mi"

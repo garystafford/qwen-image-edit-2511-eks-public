@@ -1,0 +1,10 @@
+# Minimal requirements for app_local.py (local UI calling remote API)
+# No GPU dependencies needed - all inference happens remotely
+# Requires Python 3.11+ for modern Gradio with better file handling
+
+# Use setup-local.sh to create virtual environment with Python 3.11+
+
+gradio>=5.0.0
+requests>=2.31.0
+pillow>=10.1.0
+numpy>=1.24.0

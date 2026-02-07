@@ -1,0 +1,23 @@
+# Lightweight Gradio UI container
+# Connects to model service via internal cluster DNS
+# ~200MB total size
+
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install dependencies
+COPY requirements-local.txt .
+RUN pip install --no-cache-dir -r requirements-local.txt
+
+# Copy UI application
+COPY src/app_local.py .
+
+# Expose Gradio port
+EXPOSE 7860
+
+# Set default API URL (can be overridden by environment variable)
+ENV API_BASE_URL=http://qwen-model-service.qwen.svc.cluster.local:8000
+
+# Run Gradio UI
+CMD ["python", "app_local.py"]

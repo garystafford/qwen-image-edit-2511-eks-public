@@ -1,0 +1,292 @@
+#!/usr/bin/env python3
+"""
+Batch process images using the FastAPI model endpoint directly.
+
+Iterates through the samples_images/ folder and sends each image
+to the /api/v1/batch/infer endpoint on the model service.
+
+Usage:
+    python scripts/batch_process_fastapi.py --url http://localhost:8000
+    python scripts/batch_process_fastapi.py --url http://localhost:8000 --prompt "Make it look like a watercolor painting"
+    python scripts/batch_process_fastapi.py --url http://localhost:8000 --output ./my_output
+
+Port-forward to the model service first:
+    kubectl port-forward -n qwen svc/qwen-model-service 8000:8000
+"""
+
+import argparse
+import base64
+import json
+import os
+import sys
+import time
+from pathlib import Path
+
+import requests
+from PIL import Image
+
+
+IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".webp", ".tiff", ".avif"}
+
+DEFAULT_PROMPT = (
+    "Convert this exact photo into a Studio Ghibli-style illustration, "
+    "keeping all subjects in the same positions, poses, expressions, clothing, "
+    "camera angle, and background setting exactly as in the original image, "
+    "just redrawn in 2D Ghibli movie style, soft hand-painted shading, clean lines, "
+    "warm colors, gentle cinematic lighting, subtle film-like texture, "
+    "no changes to composition, no added or removed objects."
+)
+
+
+def image_to_base64(image_path: Path) -> str:
+    """Read an image file and return its base64-encoded string."""
+    with open(image_path, "rb") as f:
+        return base64.b64encode(f.read()).decode("utf-8")
+
+
+def save_base64_image(b64_data: str, output_path: Path) -> None:
+    """Decode a base64 string and save it as a PNG image."""
+    img_bytes = base64.b64decode(b64_data)
+    with open(output_path, "wb") as f:
+        f.write(img_bytes)
+
+
+def check_health(base_url: str) -> bool:
+    """Check the health endpoint and print GPU info."""
+    try:
+        resp = requests.get(f"{base_url}/api/v1/health", timeout=10)
+        resp.raise_for_status()
+        health = resp.json()
+        print(f"  Status:     {health['status']}")
+        print(f"  Model:      {'loaded' if health['model_loaded'] else 'NOT loaded'}")
+        print(f"  GPU:        {'available' if health['gpu_available'] else 'NOT available'}")
+        if health.get("gpu_memory_used_gb") is not None:
+            print(f"  GPU Memory: {health['gpu_memory_used_gb']:.1f} / {health['gpu_memory_total_gb']:.1f} GB")
+        return health["status"] == "healthy"
+    except requests.exceptions.ConnectionError:
+        print(f"  Cannot connect to {base_url}")
+        print(f"  Make sure port-forwarding is active:")
+        print(f"    kubectl port-forward -n qwen svc/qwen-model-service 8000:8000")
+        return False
+    except Exception as e:
+        print(f"  Health check failed: {e}")
+        return False
+
+
+def process_image(
+    base_url: str,
+    image_path: Path,
+    prompt: str,
+    seed: int,
+    randomize_seed: bool,
+    guidance_scale: float,
+    steps: int,
+    height: int,
+    width: int,
+    timeout: int,
+) -> dict:
+    """Send a single image to the FastAPI inference endpoint."""
+    b64_image = image_to_base64(image_path)
+
+    payload = {
+        "images": [{"data": b64_image, "filename": image_path.name}],
+        "prompt": prompt,
+        "seed": seed,
+        "randomize_seed": randomize_seed,
+        "guidance_scale": guidance_scale,
+        "num_inference_steps": steps,
+        "height": height,
+        "width": width,
+        "num_images_per_prompt": 1,
+    }
+
+    resp = requests.post(
+        f"{base_url}/api/v1/batch/infer",
+        json=payload,
+        timeout=timeout,
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+
+def format_time(seconds: float) -> str:
+    """Format seconds into a readable string."""
+    if seconds < 60:
+        return f"{seconds:.1f}s"
+    minutes = seconds / 60
+    return f"{minutes:.1f}m"
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Batch process sample images via FastAPI model endpoint"
+    )
+    parser.add_argument(
+        "--url",
+        type=str,
+        default="http://localhost:8000",
+        help="FastAPI model service URL (default: http://localhost:8000)",
+    )
+    parser.add_argument(
+        "--input",
+        "-i",
+        type=str,
+        default=None,
+        help="Input directory (default: samples_images/ in project root)",
+    )
+    parser.add_argument(
+        "--output",
+        "-o",
+        type=str,
+        default=None,
+        help="Output directory (default: batch_output/ in project root)",
+    )
+    parser.add_argument(
+        "--prompt",
+        "-p",
+        type=str,
+        default=DEFAULT_PROMPT,
+        help="Editing prompt to apply to all images",
+    )
+    parser.add_argument("--seed", type=int, default=42, help="Random seed (default: 42)")
+    parser.add_argument(
+        "--randomize-seed",
+        action="store_true",
+        default=False,
+        help="Randomize seed for each image",
+    )
+    parser.add_argument(
+        "--guidance-scale", type=float, default=3.0, help="Guidance scale (default: 3.0)"
+    )
+    parser.add_argument(
+        "--steps", type=int, default=20, help="Number of inference steps (default: 20)"
+    )
+    parser.add_argument(
+        "--height", type=int, default=1024, help="Output height in pixels (default: 1024)"
+    )
+    parser.add_argument(
+        "--width", type=int, default=1024, help="Output width in pixels (default: 1024)"
+    )
+    parser.add_argument(
+        "--timeout", type=int, default=300, help="Request timeout in seconds (default: 300)"
+    )
+    parser.add_argument(
+        "--delay", type=float, default=1.0, help="Delay between images in seconds (default: 1.0)"
+    )
+
+    args = parser.parse_args()
+
+    # Resolve directories relative to project root
+    project_root = Path(__file__).resolve().parent.parent
+    input_dir = Path(args.input) if args.input else project_root / "samples_images"
+    output_dir = Path(args.output) if args.output else project_root / "batch_output"
+
+    if not input_dir.exists():
+        print(f"Error: Input directory '{input_dir}' does not exist")
+        sys.exit(1)
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Find image files
+    image_files = sorted(
+        f for f in input_dir.iterdir()
+        if f.suffix.lower() in IMAGE_EXTENSIONS
+    )
+
+    if not image_files:
+        print(f"No image files found in '{input_dir}'")
+        sys.exit(1)
+
+    # Print configuration
+    print("=" * 70)
+    print("BATCH PROCESSING - FastAPI Model Endpoint")
+    print("=" * 70)
+    print(f"  Endpoint:   {args.url}")
+    print(f"  Input:      {input_dir}")
+    print(f"  Output:     {output_dir}")
+    print(f"  Images:     {len(image_files)}")
+    print(f"  Steps:      {args.steps}")
+    print(f"  Guidance:   {args.guidance_scale}")
+    print(f"  Size:       {args.width}x{args.height}")
+    print(f"  Seed:       {'random' if args.randomize_seed else args.seed}")
+    print(f"  Prompt:     {args.prompt[:80]}...")
+    print("=" * 70)
+
+    # Health check
+    print("\nChecking model service health...")
+    if not check_health(args.url):
+        print("\nModel service is not healthy. Exiting.")
+        sys.exit(1)
+    print()
+
+    # Process images
+    success_count = 0
+    fail_count = 0
+    times = []
+    batch_start = time.time()
+
+    for i, image_path in enumerate(image_files, 1):
+        print(f"[{i}/{len(image_files)}] {image_path.name}...", end=" ", flush=True)
+
+        start = time.time()
+        try:
+            result = process_image(
+                base_url=args.url,
+                image_path=image_path,
+                prompt=args.prompt,
+                seed=args.seed,
+                randomize_seed=args.randomize_seed,
+                guidance_scale=args.guidance_scale,
+                steps=args.steps,
+                height=args.height,
+                width=args.width,
+                timeout=args.timeout,
+            )
+
+            elapsed = time.time() - start
+
+            if result["success"] and result["images"]:
+                for img_out in result["images"]:
+                    out_name = f"{image_path.stem}_edited.png"
+                    out_path = output_dir / out_name
+                    save_base64_image(img_out["data"], out_path)
+
+                print(f"OK ({format_time(elapsed)}, seed={result['images'][0]['seed']})")
+                success_count += 1
+                times.append(elapsed)
+            else:
+                error = result.get("error", "unknown error")
+                print(f"FAILED ({format_time(elapsed)}) - {error}")
+                fail_count += 1
+
+        except requests.exceptions.Timeout:
+            elapsed = time.time() - start
+            print(f"TIMEOUT ({format_time(elapsed)})")
+            fail_count += 1
+        except Exception as e:
+            elapsed = time.time() - start
+            print(f"ERROR ({format_time(elapsed)}) - {e}")
+            fail_count += 1
+
+        if i < len(image_files) and args.delay > 0:
+            time.sleep(args.delay)
+
+    # Summary
+    total_elapsed = time.time() - batch_start
+    print()
+    print("=" * 70)
+    print("RESULTS")
+    print("=" * 70)
+    print(f"  Processed:  {success_count}/{len(image_files)}")
+    print(f"  Failed:     {fail_count}/{len(image_files)}")
+    print(f"  Total time: {format_time(total_elapsed)}")
+    if times:
+        print(f"  Avg/image:  {format_time(sum(times) / len(times))}")
+        print(f"  Fastest:    {format_time(min(times))}")
+        print(f"  Slowest:    {format_time(max(times))}")
+    print(f"  Output:     {output_dir}")
+    print("=" * 70)
+
+
+if __name__ == "__main__":
+    main()
