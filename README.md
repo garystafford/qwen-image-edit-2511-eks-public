@@ -7,48 +7,18 @@ deployed on Amazon EKS with GPU acceleration.
 
 ## Architecture
 
-```text
-                           USERS
-                             |
-                             v
-                     +---------------+
-                     |  ALB Ingress  |
-                     |  (HTTPS/443)  |
-                     +-------+-------+
-                             |
-              +--------------+--------------+
-              |  /api, /health              |  / (all other)
-              v                             v
-    +-------------------+        +-------------------+
-    |   Model Service   |        |    UI Service      |
-    |   (FastAPI)       |        |    (Gradio)        |
-    |   Port 8000       |        |    Port 7860       |
-    |                   |        |                    |
-    |   NVIDIA L40S GPU |        |    No GPU needed   |
-    |   ~6GB image      |        |    ~200MB image    |
-    |   24Gi memory     |        |    512Mi memory    |
-    +--------+----------+        +---------+----------+
-             |                             |
-             |  Loads model from           |  Calls model via
-             |  /mnt/qwen-models           |  cluster DNS:
-             |                             |  qwen-model-service
-             v                             |  .qwen.svc:8000
-    +-------------------+                  |
-    |  DaemonSet        |                  |
-    |  (Model Cache)    |<-----------------+
-    |                   |
-    |  Downloads model  |
-    |  from S3 to node  |
-    |  local EBS on     |
-    |  first boot       |
-    +--------+----------+
-             |
-             v
-    +-------------------+
-    |  S3 Bucket        |
-    |  17GB model       |
-    |  (4-bit quantized)|
-    +-------------------+
+```mermaid
+graph TD
+    Users(["USERS"]) --> ALB["ALB Ingress<br/>HTTPS/443"]
+
+    ALB -- "/api, /health" --> Model["Model Service<br/>FastAPI · Port 8000<br/>NVIDIA L40S GPU<br/>~6GB image · 24Gi mem"]
+    ALB -- "/ (all other)" --> UI["UI Service<br/>Gradio · Port 7860<br/>No GPU needed<br/>~200MB image · 512Mi mem"]
+
+    UI -. "cluster DNS<br/>qwen-model-service.qwen.svc:8000" .-> Model
+
+    Model -- "Loads from /mnt/qwen-models" --> DS["DaemonSet · Model Cache<br/>Downloads model from S3<br/>to node-local EBS on first boot"]
+
+    DS --> S3[("S3 Bucket<br/>17GB model<br/>4-bit quantized")]
 ```
 
 ### Two-Container Design
@@ -63,32 +33,81 @@ without rebuilding the heavy model container.
 
 ## Deployment Flow
 
-```text
-  1. CONFIGURE             2. BUILD                 3. DEPLOY
+```mermaid
+graph LR
+    subgraph "1. Configure"
+        env[".env<br/>AWS_ACCT, REGION,<br/>CLUSTER, ..."]
+    end
 
-  cp .env.example .env     build-and-push-all.sh    setup-eks-prerequisites.sh
-  vim .env                        |                  install-alb-controller.sh
-       |                   +------+------+           create-ecr-repos.sh
-       v                   |             |                  |
-  +----------+      +------v---+  +------v---+       +-----v------+
-  | .env     |      | Docker   |  | Docker   |       | Kustomize  |
-  | AWS_ACCT |      | Model    |  | UI       |       | k8s/base/  |
-  | REGION   |----->| Image    |  | Image    |       | config.yaml|
-  | CLUSTER  |      +------+---+  +------+---+       +-----+------+
-  | ...      |             |             |                  |
-  +----------+             v             v                  v
-                     +-----+-------------+---+       +------+------+
-                     |         ECR           |       |    EKS      |
-                     |  qwen-model:v1        |------>|  Namespace: |
-                     |  qwen-ui:v1           |       |  qwen       |
-                     +-----------------------+       +-------------+
+    subgraph "2. Build"
+        model_img["Docker<br/>Model Image"]
+        ui_img["Docker<br/>UI Image"]
+    end
 
-  4. ACCESS
+    subgraph "3. Deploy"
+        kust["Kustomize<br/>k8s/base/ + config.yaml"]
+    end
 
-  https://your-domain.com  -->  ALB  -->  Gradio UI  -->  FastAPI Model
-       or
-  kubectl port-forward -n qwen svc/qwen-model-service 8000:8000
-  python scripts/batch_process_fastapi.py
+    env --> model_img
+    env --> ui_img
+    model_img --> ECR["ECR<br/>qwen-model:v1<br/>qwen-ui:v1"]
+    ui_img --> ECR
+    kust --> EKS["EKS<br/>Namespace: qwen"]
+    ECR --> EKS
+    EKS --> access["4. ACCESS<br/>ALB → Gradio UI → FastAPI Model"]
+```
+
+## Request Flow
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant ALB as ALB Ingress
+    participant UI as Gradio UI<br/>Port 7860
+    participant API as FastAPI Model<br/>Port 8000
+    participant GPU as Diffusion Pipeline<br/>NVIDIA L40S
+
+    User->>ALB: Upload image + prompt
+    ALB->>UI: Route / to UI service
+    UI->>UI: Encode image as base64
+    UI->>API: POST /api/v1/batch/infer<br/>(base64 image + prompt + params)
+    API->>API: Decode image, build pipeline args
+    API->>GPU: Run diffusion (20 steps default)
+    GPU-->>API: Generated image tensor
+    API->>API: Encode result as base64
+    API-->>UI: JSON response (base64 image + seed)
+    UI->>UI: Decode and display
+    UI-->>ALB: Rendered gallery
+    ALB-->>User: Edited image
+```
+
+## Model Loading Sequence
+
+```mermaid
+sequenceDiagram
+    participant K8s as Kubernetes Scheduler
+    participant DS as DaemonSet<br/>Init Container
+    participant S3 as S3 Bucket
+    participant EBS as Node-Local EBS<br/>/mnt/qwen-models
+    participant Pod as Model Pod
+    participant GPU as GPU VRAM<br/>NVIDIA L40S
+
+    K8s->>DS: Schedule on GPU node
+    DS->>EBS: Check .model-ready marker
+    alt Model not cached
+        DS->>S3: aws s3 sync (17GB)
+        S3-->>EBS: Download model weights
+        DS->>EBS: Set permissions (UID 1000)
+        DS->>EBS: Write .model-ready marker
+    else Model already cached
+        DS-->>DS: Skip download, exit 0
+    end
+    K8s->>Pod: Schedule model deployment
+    Pod->>EBS: Load model from /models
+    Pod->>GPU: Transfer to VRAM (~18GB)
+    Pod->>Pod: Start FastAPI server
+    Pod-->>K8s: Health check passes<br/>GET /api/v1/health
+    Note over K8s,GPU: Ready for inference<br/>~120s initialDelaySeconds
 ```
 
 ## Quick Start
