@@ -5,7 +5,7 @@ ifneq (,$(wildcard ./.env))
     ECR_REGISTRY = $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com
 endif
 
-.PHONY: help verify build-and-push-ui build-and-push-model build-and-push-all deploy port-forward status logs logs-ui logs-model clean batch
+.PHONY: help verify build-and-push-ui build-and-push-model build-and-push-all deploy port-forward status logs logs-ui logs-model clean batch lint lint-python lint-bash lint-markdown format
 
 # Default target
 help:
@@ -33,13 +33,20 @@ help:
 	@echo "Testing:"
 	@echo "  make batch           Run batch test against FastAPI endpoint"
 	@echo ""
+	@echo "Linting:"
+	@echo "  make lint            Run all linters (python, bash, markdown)"
+	@echo "  make lint-python     Run black (check) + ruff on Python files"
+	@echo "  make lint-bash       Run shellcheck on shell scripts"
+	@echo "  make lint-markdown   Run markdownlint on Markdown files"
+	@echo "  make format          Auto-format Python files (black + ruff fix)"
+	@echo ""
 	@echo "Cleanup:"
 	@echo "  make clean           Remove local build artifacts"
 	@echo ""
 	@echo "Examples:"
 	@echo "  make build-and-push-all VERSION=v2"
 	@echo "  make deploy"
-	@echo "  make batch"
+	@echo "  make lint"
 
 verify:
 	@echo "Verifying prerequisites..."
@@ -103,6 +110,30 @@ logs-model:
 batch:
 	@echo "Running batch test against FastAPI endpoint..."
 	python scripts/batch_process_fastapi.py
+
+# Linting
+lint: lint-python lint-bash lint-markdown
+
+lint-python:
+	@echo "=== Python: black (check) ==="
+	uvx black --check src/ scripts/batch_process_fastapi.py
+	@echo ""
+	@echo "=== Python: ruff ==="
+	uvx ruff check src/ scripts/batch_process_fastapi.py
+
+lint-bash:
+	@echo "=== Bash: shellcheck ==="
+	shellcheck -S warning scripts/*.sh
+
+lint-markdown:
+	@echo "=== Markdown: markdownlint ==="
+	npx markdownlint-cli README.md
+
+format:
+	@echo "=== Formatting Python files ==="
+	uvx black src/ scripts/batch_process_fastapi.py
+	uvx ruff check --fix src/ scripts/batch_process_fastapi.py
+	@echo "Done."
 
 # Cleanup
 clean:

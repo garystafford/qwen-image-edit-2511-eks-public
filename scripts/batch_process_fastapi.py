@@ -1,17 +1,14 @@
 #!/usr/bin/env python3
 """
-Batch process images using the FastAPI model endpoint directly.
+Batch process images using the FastAPI model endpoint.
 
 Iterates through the samples_images/ folder and sends each image
 to the /api/v1/batch/infer endpoint on the model service.
 
 Usage:
-    python scripts/batch_process_fastapi.py --url http://localhost:8000
-    python scripts/batch_process_fastapi.py --url http://localhost:8000 --prompt "Make it look like a watercolor painting"
-    python scripts/batch_process_fastapi.py --url http://localhost:8000 --output ./my_output
-
-Port-forward to the model service first:
-    kubectl port-forward -n qwen svc/qwen-model-service 8000:8000
+    python scripts/batch_process_fastapi.py --url https://your-domain.example.com
+    python scripts/batch_process_fastapi.py --url https://your-domain.example.com --prompt "Make it a watercolor painting"
+    python scripts/batch_process_fastapi.py --url https://your-domain.example.com --output ./my_output
 """
 
 import argparse
@@ -124,8 +121,8 @@ def main():
     parser.add_argument(
         "--url",
         type=str,
-        default="http://localhost:8000",
-        help="FastAPI model service URL (default: http://localhost:8000)",
+        required=True,
+        help="Model service URL (e.g. https://your-domain.example.com)",
     )
     parser.add_argument(
         "--input",

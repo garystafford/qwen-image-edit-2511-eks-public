@@ -21,10 +21,10 @@ echo ""
 # Step 1: Create IAM role for S3 access using IRSA
 echo "Step 1: Creating IAM role for S3 access (IRSA)..."
 eksctl create iamserviceaccount \
-	--name $SERVICE_ACCOUNT \
-	--namespace $K8S_NAMESPACE \
-	--cluster $EKS_CLUSTER_NAME \
-	--region $AWS_REGION \
+	--name "$SERVICE_ACCOUNT" \
+	--namespace "$K8S_NAMESPACE" \
+	--cluster "$EKS_CLUSTER_NAME" \
+	--region "$AWS_REGION" \
 	--attach-policy-arn arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess \
 	--approve \
 	--override-existing-serviceaccounts
@@ -40,8 +40,8 @@ echo "Installing AWS EFS CSI Driver..."
 eksctl create iamserviceaccount \
 	--name efs-csi-controller-sa \
 	--namespace kube-system \
-	--cluster $EKS_CLUSTER_NAME \
-	--region $AWS_REGION \
+	--cluster "$EKS_CLUSTER_NAME" \
+	--region "$AWS_REGION" \
 	--attach-policy-arn arn:aws:iam::aws:policy/service-role/AmazonEFSCSIDriverPolicy \
 	--approve \
 	--override-existing-serviceaccounts
@@ -53,18 +53,18 @@ echo "EFS CSI driver installed"
 echo ""
 
 # Get VPC ID and create EFS filesystem
-VPC_ID=$(aws eks describe-cluster --name $EKS_CLUSTER_NAME --region $AWS_REGION --query "cluster.resourcesVpcConfig.vpcId" --output text)
+VPC_ID=$(aws eks describe-cluster --name "$EKS_CLUSTER_NAME" --region "$AWS_REGION" --query "cluster.resourcesVpcConfig.vpcId" --output text)
 echo "VPC ID: $VPC_ID"
 
 # Create EFS filesystem
 echo "Creating EFS filesystem..."
 EFS_ID=$(aws efs create-file-system \
-	--creation-token qwen-model-cache-$(date +%s) \
+	--creation-token "qwen-model-cache-$(date +%s)" \
 	--performance-mode generalPurpose \
 	--throughput-mode bursting \
 	--encrypted \
 	--tags Key=Name,Value=qwen-model-cache \
-	--region $AWS_REGION \
+	--region "$AWS_REGION" \
 	--query 'FileSystemId' \
 	--output text)
 
@@ -73,21 +73,21 @@ echo ""
 
 # Wait for EFS to be available
 echo "Waiting for EFS to be available..."
-aws efs describe-file-systems --file-system-id $EFS_ID --region $AWS_REGION --query 'FileSystems[0].LifeCycleState' --output text
+aws efs describe-file-systems --file-system-id "$EFS_ID" --region "$AWS_REGION" --query 'FileSystems[0].LifeCycleState' --output text
 sleep 10
 
 # Create mount targets in each subnet
 echo "Creating EFS mount targets..."
-SUBNET_IDS=$(aws eks describe-cluster --name $EKS_CLUSTER_NAME --region $AWS_REGION --query "cluster.resourcesVpcConfig.subnetIds" --output text)
-SECURITY_GROUP_ID=$(aws eks describe-cluster --name $EKS_CLUSTER_NAME --region $AWS_REGION --query "cluster.resourcesVpcConfig.clusterSecurityGroupId" --output text)
+SUBNET_IDS=$(aws eks describe-cluster --name "$EKS_CLUSTER_NAME" --region "$AWS_REGION" --query "cluster.resourcesVpcConfig.subnetIds" --output text)
+SECURITY_GROUP_ID=$(aws eks describe-cluster --name "$EKS_CLUSTER_NAME" --region "$AWS_REGION" --query "cluster.resourcesVpcConfig.clusterSecurityGroupId" --output text)
 
 for SUBNET_ID in $SUBNET_IDS; do
 	echo "  Creating mount target in subnet: $SUBNET_ID"
 	aws efs create-mount-target \
-		--file-system-id $EFS_ID \
-		--subnet-id $SUBNET_ID \
-		--security-groups $SECURITY_GROUP_ID \
-		--region $AWS_REGION || echo "  Mount target may already exist"
+		--file-system-id "$EFS_ID" \
+		--subnet-id "$SUBNET_ID" \
+		--security-groups "$SECURITY_GROUP_ID" \
+		--region "$AWS_REGION" || echo "  Mount target may already exist"
 done
 
 echo "EFS mount targets created"
@@ -112,7 +112,7 @@ echo ""
 
 # Step 4: Verify S3 bucket access
 echo "Step 4: Verifying S3 bucket access..."
-if aws s3 ls s3://$S3_BUCKET/ --region $AWS_REGION >/dev/null 2>&1; then
+if aws s3 ls "s3://$S3_BUCKET/" --region "$AWS_REGION" >/dev/null 2>&1; then
 	echo "S3 bucket accessible: s3://$S3_BUCKET"
 else
 	echo "Warning: S3 bucket not accessible. Make sure to upload model weights."

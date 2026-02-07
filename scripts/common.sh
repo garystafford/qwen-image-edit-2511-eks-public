@@ -35,7 +35,7 @@ for var in "${REQUIRED_VARS[@]}"; do
     fi
 done
 
-if [ ${#MISSING[@]} -gt 0 ]; then
+if [ "${#MISSING[@]}" -gt 0 ]; then
     echo "Error: Missing required variables in .env:"
     for var in "${MISSING[@]}"; do
         echo "  - $var"

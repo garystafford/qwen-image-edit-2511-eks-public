@@ -15,13 +15,13 @@ echo ""
 echo "==========================================================="
 echo "  MODEL CONTAINER"
 echo "==========================================================="
-./scripts/build-and-push-model.sh ${VERSION}
+./scripts/build-and-push-model.sh "${VERSION}"
 
 echo ""
 echo "==========================================================="
 echo "  UI CONTAINER"
 echo "==========================================================="
-./scripts/build-and-push-ui.sh ${VERSION}
+./scripts/build-and-push-ui.sh "${VERSION}"
 
 echo ""
 echo "==========================================================="

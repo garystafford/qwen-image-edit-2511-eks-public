@@ -18,21 +18,21 @@ echo "[1/3] Building model image..."
 docker build \
   --platform linux/amd64 \
   -f Dockerfile.model \
-  -t ${ECR_REPO_MODEL}:${VERSION} \
-  -t ${ECR_REPO_MODEL}:latest \
-  -t ${ECR_REGISTRY}/${ECR_REPO_MODEL}:${VERSION} \
-  -t ${ECR_REGISTRY}/${ECR_REPO_MODEL}:latest \
+  -t "${ECR_REPO_MODEL}:${VERSION}" \
+  -t "${ECR_REPO_MODEL}:latest" \
+  -t "${ECR_REGISTRY}/${ECR_REPO_MODEL}:${VERSION}" \
+  -t "${ECR_REGISTRY}/${ECR_REPO_MODEL}:latest" \
   .
 
 # Step 2: Login to ECR
 echo "[2/3] Logging into ECR..."
-aws ecr get-login-password --region ${AWS_REGION} | \
-  docker login --username AWS --password-stdin ${ECR_REGISTRY} > /dev/null 2>&1
+aws ecr get-login-password --region "${AWS_REGION}" | \
+  docker login --username AWS --password-stdin "${ECR_REGISTRY}" > /dev/null 2>&1
 
 # Step 3: Push to ECR (~5 minutes for 6GB image)
 echo "[3/3] Pushing to ECR..."
-docker push ${ECR_REGISTRY}/${ECR_REPO_MODEL}:${VERSION}
-docker push ${ECR_REGISTRY}/${ECR_REPO_MODEL}:latest
+docker push "${ECR_REGISTRY}/${ECR_REPO_MODEL}:${VERSION}"
+docker push "${ECR_REGISTRY}/${ECR_REPO_MODEL}:latest"
 
 echo ""
 echo "Model container pushed successfully!"

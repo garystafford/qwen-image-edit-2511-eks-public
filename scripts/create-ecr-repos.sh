@@ -9,12 +9,12 @@ echo ""
 
 # Create UI repository
 echo "[1/2] Creating ${ECR_REPO_UI} repository..."
-if aws ecr describe-repositories --repository-names ${ECR_REPO_UI} --region ${AWS_REGION} >/dev/null 2>&1; then
+if aws ecr describe-repositories --repository-names "${ECR_REPO_UI}" --region "${AWS_REGION}" >/dev/null 2>&1; then
     echo "  ✓ ${ECR_REPO_UI} repository already exists"
 else
     aws ecr create-repository \
-        --repository-name ${ECR_REPO_UI} \
-        --region ${AWS_REGION} \
+        --repository-name "${ECR_REPO_UI}" \
+        --region "${AWS_REGION}" \
         --image-scanning-configuration scanOnPush=true \
         --encryption-configuration encryptionType=AES256 \
         --tags Key=Project,Value=qwen-image-edit Key=Component,Value=ui
@@ -23,12 +23,12 @@ fi
 
 # Create Model repository
 echo "[2/2] Creating ${ECR_REPO_MODEL} repository..."
-if aws ecr describe-repositories --repository-names ${ECR_REPO_MODEL} --region ${AWS_REGION} >/dev/null 2>&1; then
+if aws ecr describe-repositories --repository-names "${ECR_REPO_MODEL}" --region "${AWS_REGION}" >/dev/null 2>&1; then
     echo "  ✓ ${ECR_REPO_MODEL} repository already exists"
 else
     aws ecr create-repository \
-        --repository-name ${ECR_REPO_MODEL} \
-        --region ${AWS_REGION} \
+        --repository-name "${ECR_REPO_MODEL}" \
+        --region "${AWS_REGION}" \
         --image-scanning-configuration scanOnPush=true \
         --encryption-configuration encryptionType=AES256 \
         --tags Key=Project,Value=qwen-image-edit Key=Component,Value=model

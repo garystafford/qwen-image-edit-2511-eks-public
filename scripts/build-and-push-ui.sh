@@ -16,21 +16,21 @@ echo "[1/3] Building UI image..."
 docker build \
   --platform linux/amd64 \
   -f Dockerfile.ui \
-  -t ${ECR_REPO_UI}:${VERSION} \
-  -t ${ECR_REPO_UI}:latest \
-  -t ${ECR_REGISTRY}/${ECR_REPO_UI}:${VERSION} \
-  -t ${ECR_REGISTRY}/${ECR_REPO_UI}:latest \
+  -t "${ECR_REPO_UI}:${VERSION}" \
+  -t "${ECR_REPO_UI}:latest" \
+  -t "${ECR_REGISTRY}/${ECR_REPO_UI}:${VERSION}" \
+  -t "${ECR_REGISTRY}/${ECR_REPO_UI}:latest" \
   .
 
 # Step 2: Login to ECR
 echo "[2/3] Logging into ECR..."
-aws ecr get-login-password --region ${AWS_REGION} | \
-  docker login --username AWS --password-stdin ${ECR_REGISTRY} > /dev/null 2>&1
+aws ecr get-login-password --region "${AWS_REGION}" | \
+  docker login --username AWS --password-stdin "${ECR_REGISTRY}" > /dev/null 2>&1
 
 # Step 3: Push to ECR (~20-30 seconds)
 echo "[3/3] Pushing to ECR..."
-docker push ${ECR_REGISTRY}/${ECR_REPO_UI}:${VERSION}
-docker push ${ECR_REGISTRY}/${ECR_REPO_UI}:latest
+docker push "${ECR_REGISTRY}/${ECR_REPO_UI}:${VERSION}"
+docker push "${ECR_REGISTRY}/${ECR_REPO_UI}:latest"
 
 echo ""
 echo "UI container pushed successfully!"

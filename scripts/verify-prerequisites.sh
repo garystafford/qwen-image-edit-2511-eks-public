@@ -42,7 +42,7 @@ fi
 # Check GPU nodes
 echo "[4/7] GPU nodes..."
 GPU_NODES=$(kubectl get nodes -l nvidia.com/gpu.present=true --no-headers 2>/dev/null | wc -l)
-if [ ${GPU_NODES} -gt 0 ]; then
+if [ "${GPU_NODES}" -gt 0 ]; then
     echo "  ✓ ${GPU_NODES} GPU node(s) available"
 else
     echo "  ✗ No GPU nodes found"
@@ -61,8 +61,8 @@ fi
 
 # Check ECR repositories
 echo "[6/7] ECR repositories..."
-UI_REPO_EXISTS=$(aws ecr describe-repositories --repository-names ${ECR_REPO_UI} --region ${AWS_REGION} 2>/dev/null && echo "yes" || echo "no")
-MODEL_REPO_EXISTS=$(aws ecr describe-repositories --repository-names ${ECR_REPO_MODEL} --region ${AWS_REGION} 2>/dev/null && echo "yes" || echo "no")
+UI_REPO_EXISTS=$(aws ecr describe-repositories --repository-names "${ECR_REPO_UI}" --region "${AWS_REGION}" 2>/dev/null && echo "yes" || echo "no")
+MODEL_REPO_EXISTS=$(aws ecr describe-repositories --repository-names "${ECR_REPO_MODEL}" --region "${AWS_REGION}" 2>/dev/null && echo "yes" || echo "no")
 
 if [ "${UI_REPO_EXISTS}" = "yes" ] && [ "${MODEL_REPO_EXISTS}" = "yes" ]; then
     echo "  ✓ ECR repositories exist (${ECR_REPO_UI}, ${ECR_REPO_MODEL})"
@@ -84,7 +84,7 @@ else
 fi
 
 echo ""
-if [ ${EXIT_CODE} -eq 0 ]; then
+if [ "${EXIT_CODE}" -eq 0 ]; then
     echo "All prerequisites met!"
     echo ""
     echo "Next steps:"
@@ -97,4 +97,4 @@ else
     echo "Some prerequisites are missing. Please fix the issues above."
 fi
 
-exit ${EXIT_CODE}
+exit "${EXIT_CODE}"

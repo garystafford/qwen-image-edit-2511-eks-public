@@ -18,7 +18,7 @@ echo ""
 
 # Get VPC and subnets from cluster
 echo "1. Getting cluster network configuration..."
-VPC_ID=$(aws eks describe-cluster --name $EKS_CLUSTER_NAME --region $REGION --query 'cluster.resourcesVpcConfig.vpcId' --output text 2>/dev/null)
+VPC_ID=$(aws eks describe-cluster --name "$EKS_CLUSTER_NAME" --region "$REGION" --query 'cluster.resourcesVpcConfig.vpcId' --output text 2>/dev/null)
 if [ -z "$VPC_ID" ] || [ "$VPC_ID" = "None" ]; then
   echo "   Could not find cluster: $EKS_CLUSTER_NAME"
   exit 1
@@ -30,7 +30,7 @@ echo ""
 echo "2. Available subnets in VPC:"
 aws ec2 describe-subnets \
   --filters "Name=vpc-id,Values=$VPC_ID" \
-  --region $REGION \
+  --region "$REGION" \
   --query 'Subnets[*].[SubnetId, AvailabilityZone, CidrBlock, Tags[?Key==`Name`].Value | [0]]' \
   --output table
 
@@ -38,7 +38,7 @@ aws ec2 describe-subnets \
 echo ""
 echo "3. Checking Auto Scaling Group activities..."
 ASG_NAME=$(aws autoscaling describe-auto-scaling-groups \
-  --region $REGION \
+  --region "$REGION" \
   --query "AutoScalingGroups[?contains(AutoScalingGroupName, '$EKS_NODEGROUP_NAME')].AutoScalingGroupName" \
   --output text 2>/dev/null)
 
@@ -50,7 +50,7 @@ if [ -n "$ASG_NAME" ] && [ "$ASG_NAME" != "None" ]; then
   # Get activities as JSON for better parsing
   aws autoscaling describe-scaling-activities \
     --auto-scaling-group-name "$ASG_NAME" \
-    --region $REGION \
+    --region "$REGION" \
     --max-records 20 \
     --output json | jq -r '.Activities[] | "\(.StartTime)\t\(.StatusCode)\t\(.Details)"' | while IFS=$'\t' read -r time status details; do
       # Extract AZ from details JSON
@@ -75,7 +75,7 @@ fi
 echo ""
 echo "4. Checking all availability zones in $REGION..."
 AZS=$(aws ec2 describe-availability-zones \
-  --region $REGION \
+  --region "$REGION" \
   --query 'AvailabilityZones[?State==`available`].ZoneName' \
   --output text)
 
@@ -89,7 +89,7 @@ for AZ in $AZS; do
   # Get a subnet in this AZ
   SUBNET=$(aws ec2 describe-subnets \
     --filters "Name=vpc-id,Values=$VPC_ID" "Name=availability-zone,Values=$AZ" \
-    --region $REGION \
+    --region "$REGION" \
     --query 'Subnets[0].SubnetId' \
     --output text 2>/dev/null)
 
@@ -101,7 +101,7 @@ for AZ in $AZS; do
   # Get a security group for dry-run
   SG=$(aws ec2 describe-security-groups \
     --filters "Name=vpc-id,Values=$VPC_ID" \
-    --region $REGION \
+    --region "$REGION" \
     --query 'SecurityGroups[0].GroupId' \
     --output text 2>/dev/null)
 
@@ -109,7 +109,7 @@ for AZ in $AZS; do
   AMI=$(aws ec2 describe-images \
     --owners amazon \
     --filters "Name=name,Values=amzn2-ami-hvm-*-x86_64-gp2" \
-    --region $REGION \
+    --region "$REGION" \
     --query 'Images | sort_by(@, &CreationDate) | [-1].ImageId' \
     --output text 2>/dev/null)
 
@@ -121,11 +121,11 @@ for AZ in $AZS; do
   # Try dry-run launch
   RESULT=$(aws ec2 run-instances \
     --image-id "$AMI" \
-    --instance-type $INSTANCE_TYPE \
-    --subnet-id $SUBNET \
-    --security-group-ids $SG \
+    --instance-type "$INSTANCE_TYPE" \
+    --subnet-id "$SUBNET" \
+    --security-group-ids "$SG" \
     --dry-run \
-    --region $REGION \
+    --region "$REGION" \
     2>&1 || true)
 
   if echo "$RESULT" | grep -q "InsufficientInstanceCapacity"; then
@@ -151,7 +151,7 @@ echo "6. Instance type availability by AZ:"
 aws ec2 describe-instance-type-offerings \
   --location-type availability-zone \
   --filters "Name=instance-type,Values=$INSTANCE_TYPE" \
-  --region $REGION \
+  --region "$REGION" \
   --query 'InstanceTypeOfferings[*].[Location, InstanceType]' \
   --output table
 
@@ -165,7 +165,7 @@ if [ -n "$ASG_NAME" ] && [ "$ASG_NAME" != "None" ]; then
   echo "Current ASG Configuration:"
   ASG_INFO=$(aws autoscaling describe-auto-scaling-groups \
     --auto-scaling-group-name "$ASG_NAME" \
-    --region $REGION \
+    --region "$REGION" \
     --output json)
 
   DESIRED=$(echo "$ASG_INFO" | jq -r '.AutoScalingGroups[0].DesiredCapacity')
@@ -178,7 +178,7 @@ if [ -n "$ASG_NAME" ] && [ "$ASG_NAME" != "None" ]; then
 
   IFS=',' read -ra SUBNET_ARRAY <<< "$SUBNETS"
   for subnet in "${SUBNET_ARRAY[@]}"; do
-    SUBNET_AZ=$(aws ec2 describe-subnets --subnet-ids $subnet --region $REGION --query 'Subnets[0].AvailabilityZone' --output text 2>/dev/null)
+    SUBNET_AZ=$(aws ec2 describe-subnets --subnet-ids "$subnet" --region "$REGION" --query 'Subnets[0].AvailabilityZone' --output text 2>/dev/null)
     echo "    - $subnet ($SUBNET_AZ)"
   done
 
@@ -186,11 +186,11 @@ if [ -n "$ASG_NAME" ] && [ "$ASG_NAME" != "None" ]; then
   echo "Recent Capacity Issues:"
   aws autoscaling describe-scaling-activities \
     --auto-scaling-group-name "$ASG_NAME" \
-    --region $REGION \
+    --region "$REGION" \
     --max-records 10 \
     --output json | jq -r '.Activities[] | select(.StatusCode == "Failed") | "\(.StartTime | split(".")[0] | gsub("T"; " "))\t\(.StatusMessage)"' | while IFS=$'\t' read -r time msg; do
       # Truncate message intelligently
-      if [ ${#msg} -gt 120 ]; then
+      if [ "${#msg}" -gt 120 ]; then
         echo "  $time:"
         echo "    ${msg:0:120}..."
       else

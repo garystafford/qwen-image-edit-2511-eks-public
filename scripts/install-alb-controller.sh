@@ -23,12 +23,12 @@ if kubectl get deployment -n kube-system aws-load-balancer-controller >/dev/null
 fi
 
 echo "[1/5] Downloading IAM policy..."
-curl -sS https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/${ALB_VERSION}/docs/install/iam_policy.json -o /tmp/iam_policy.json
+curl -sS "https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/${ALB_VERSION}/docs/install/iam_policy.json" -o /tmp/iam_policy.json
 
 echo "[2/5] Creating IAM policy..."
 POLICY_ARN="arn:aws:iam::${AWS_ACCOUNT_ID}:policy/AWSLoadBalancerControllerIAMPolicy"
 
-if aws iam get-policy --policy-arn ${POLICY_ARN} >/dev/null 2>&1; then
+if aws iam get-policy --policy-arn "${POLICY_ARN}" >/dev/null 2>&1; then
     echo "  IAM policy already exists"
 else
     aws iam create-policy \
@@ -39,12 +39,12 @@ fi
 
 echo "[3/5] Creating IAM role and service account..."
 eksctl create iamserviceaccount \
-    --cluster=${EKS_CLUSTER_NAME} \
+    --cluster="${EKS_CLUSTER_NAME}" \
     --namespace=kube-system \
     --name=aws-load-balancer-controller \
     --role-name AmazonEKSLoadBalancerControllerRole \
-    --attach-policy-arn=${POLICY_ARN} \
-    --region=${AWS_REGION} \
+    --attach-policy-arn="${POLICY_ARN}" \
+    --region="${AWS_REGION}" \
     --approve \
     --override-existing-serviceaccounts || echo "  Service account already exists"
 
@@ -53,13 +53,14 @@ helm repo add eks https://aws.github.io/eks-charts
 helm repo update
 
 echo "[5/5] Installing AWS Load Balancer Controller..."
+VPC_ID=$(aws eks describe-cluster --name "${EKS_CLUSTER_NAME}" --region "${AWS_REGION}" --query "cluster.resourcesVpcConfig.vpcId" --output text)
 helm install aws-load-balancer-controller eks/aws-load-balancer-controller \
     -n kube-system \
-    --set clusterName=${EKS_CLUSTER_NAME} \
+    --set clusterName="${EKS_CLUSTER_NAME}" \
     --set serviceAccount.create=false \
     --set serviceAccount.name=aws-load-balancer-controller \
-    --set region=${AWS_REGION} \
-    --set vpcId=$(aws eks describe-cluster --name ${EKS_CLUSTER_NAME} --region ${AWS_REGION} --query "cluster.resourcesVpcConfig.vpcId" --output text)
+    --set region="${AWS_REGION}" \
+    --set vpcId="${VPC_ID}"
 
 echo ""
 echo "AWS Load Balancer Controller installation complete!"

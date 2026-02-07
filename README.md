@@ -244,18 +244,20 @@ The batch script processes all images in `samples_images/`
 against the FastAPI endpoint:
 
 ```bash
-# Port-forward to model service
-kubectl port-forward -n qwen svc/qwen-model-service 8000:8000
-
 # Run with defaults
-python scripts/batch_process_fastapi.py
+python scripts/batch_process_fastapi.py \
+  --url https://your-domain.example.com
 
 # Custom prompt
-python scripts/batch_process_fastapi.py --prompt "Make it a watercolor painting"
+python scripts/batch_process_fastapi.py \
+  --url https://your-domain.example.com \
+  --prompt "Make it a watercolor painting"
 
 # All options
-python scripts/batch_process_fastapi.py --url http://localhost:8000 \
-  --steps 30 --guidance-scale 5.0 --seed 123 --output ./results
+python scripts/batch_process_fastapi.py \
+  --url https://your-domain.example.com \
+  --steps 30 --guidance-scale 5.0 --seed 123 \
+  --output ./results
 ```
 
 ## Project Structure
