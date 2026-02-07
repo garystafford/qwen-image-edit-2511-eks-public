@@ -3,6 +3,8 @@
 AI-powered image editing using the Qwen Vision Language Model,
 deployed on Amazon EKS with GPU acceleration.
 
+![Preview](./screenshot.png)
+
 ## Architecture
 
 ```text
