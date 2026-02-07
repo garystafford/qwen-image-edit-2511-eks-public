@@ -30,6 +30,11 @@ DEFAULT_PROMPT = (
     "no changes to composition, no added or removed objects."
 )
 
+DEFAULT_NEGATIVE_PROMPT = (
+    "blurry, out of focus, low resolution, low detail, low sharpness, double-image, artifacts, "
+    "soft edges, motion blur, depth of field blur, hazy, unclear, artifact, noisy"
+)
+
 
 def image_to_base64(image_path: Path) -> str:
     """Read an image file and return its base64-encoded string."""
@@ -74,6 +79,7 @@ def process_image(
     base_url: str,
     image_path: Path,
     prompt: str,
+    negative_prompt: str,
     seed: int,
     randomize_seed: bool,
     guidance_scale: float,
@@ -81,6 +87,7 @@ def process_image(
     height: int,
     width: int,
     timeout: int,
+    num_images_per_prompt: int = 1,
     max_retries: int = 3,
     retry_delay: float = 10.0,
 ) -> dict:
@@ -94,13 +101,14 @@ def process_image(
     payload = {
         "images": [{"data": b64_image, "filename": image_path.name}],
         "prompt": prompt,
+        "negative_prompt": negative_prompt,
         "seed": seed,
         "randomize_seed": randomize_seed,
         "guidance_scale": guidance_scale,
         "num_inference_steps": steps,
         "height": height,
         "width": width,
-        "num_images_per_prompt": 1,
+        "num_images_per_prompt": num_images_per_prompt,
     }
 
     for attempt in range(1, max_retries + 1):
@@ -161,6 +169,12 @@ def main():
         help="Editing prompt to apply to all images",
     )
     parser.add_argument(
+        "--negative-prompt",
+        type=str,
+        default=DEFAULT_NEGATIVE_PROMPT,
+        help="Negative prompt describing what to avoid in the output",
+    )
+    parser.add_argument(
         "--seed", type=int, default=42, help="Random seed (default: 42)"
     )
     parser.add_argument(
@@ -186,6 +200,12 @@ def main():
     )
     parser.add_argument(
         "--width", type=int, default=1024, help="Output width in pixels (default: 1024)"
+    )
+    parser.add_argument(
+        "--num-images",
+        type=int,
+        default=1,
+        help="Number of image variants per prompt (1-4, default: 1)",
     )
     parser.add_argument(
         "--timeout",
@@ -249,7 +269,9 @@ def main():
     print(f"  Guidance:   {args.guidance_scale}")
     print(f"  Size:       {args.width}x{args.height}")
     print(f"  Seed:       {'random' if args.randomize_seed else args.seed}")
+    print(f"  Variants:   {args.num_images} per image")
     print(f"  Prompt:     {args.prompt[:80]}...")
+    print(f"  Neg prompt: {args.negative_prompt[:80]}...")
     print("=" * 70)
 
     # Health check
@@ -274,6 +296,7 @@ def main():
                 base_url=args.url,
                 image_path=image_path,
                 prompt=args.prompt,
+                negative_prompt=args.negative_prompt,
                 seed=args.seed,
                 randomize_seed=args.randomize_seed,
                 guidance_scale=args.guidance_scale,
@@ -281,6 +304,7 @@ def main():
                 height=args.height,
                 width=args.width,
                 timeout=args.timeout,
+                num_images_per_prompt=args.num_images,
                 max_retries=args.retries,
                 retry_delay=args.retry_delay,
             )
@@ -288,13 +312,19 @@ def main():
             elapsed = time.time() - start
 
             if result["success"] and result["images"]:
-                for img_out in result["images"]:
-                    out_name = f"{image_path.stem}_edited.png"
+                for idx, img_out in enumerate(result["images"]):
+                    if len(result["images"]) > 1:
+                        out_name = f"{image_path.stem}_edited_{idx + 1}.png"
+                    else:
+                        out_name = f"{image_path.stem}_edited.png"
                     out_path = output_dir / out_name
                     save_base64_image(img_out["data"], out_path)
 
+                seeds = ", ".join(str(img["seed"]) for img in result["images"])
+                n_variants = len(result["images"])
+                variant_info = f", {n_variants} variants" if n_variants > 1 else ""
                 print(
-                    f"OK ({format_time(elapsed)}, seed={result['images'][0]['seed']})"
+                    f"OK ({format_time(elapsed)}, seed={seeds}{variant_info})"
                 )
                 success_count += 1
                 times.append(elapsed)
