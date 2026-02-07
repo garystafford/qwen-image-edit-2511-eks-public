@@ -114,6 +114,8 @@ sequenceDiagram
 
 ### 1. Configure
 
+Copy and configure the script's environment variables:
+
 ```bash
 cp .env.example .env
 ```
@@ -130,7 +132,7 @@ ECR_REPO_UI=qwen-ui
 ECR_REPO_MODEL=qwen-model
 ```
 
-Also copy and configure the Kubernetes config:
+Also copy and configure the Kubernetes config's environment variables:
 
 ```bash
 cp k8s/base/config.yaml.example k8s/base/config.yaml
