@@ -6,7 +6,6 @@ Loads model once, runs both servers in the same process.
 """
 
 import os
-import threading
 
 # --- Model Loading (shared by both servers) ---
 import gc
@@ -31,7 +30,7 @@ if os.path.exists(snapshot_path):
     pretrained_id = snapshot_path
     load_kwargs = {"torch_dtype": dtype}
 else:
-    print(f"[Server] Loading model by ID: ovedrive/Qwen-Image-Edit-2511-4bit")
+    print("[Server] Loading model by ID: ovedrive/Qwen-Image-Edit-2511-4bit")
     pretrained_id = "ovedrive/Qwen-Image-Edit-2511-4bit"
     load_kwargs = {"torch_dtype": dtype, "cache_dir": model_cache_dir}
 
@@ -102,13 +101,6 @@ def run_gradio():
         gc.collect()
 
         return image, seed
-
-    css = """
-    #col-container {
-        margin: 0 auto;
-        max-width: 1024px;
-    }
-    """
 
     with gr.Blocks() as demo:
         with gr.Column(elem_id="col-container"):
@@ -272,7 +264,7 @@ def run_fastapi():
         version="1.0.0",
         docs_url="/api/docs",
         redoc_url="/api/redoc",
-        openapi_url="/api/openapi.json"
+        openapi_url="/api/openapi.json",
     )
 
     @app.get("/")
@@ -316,13 +308,13 @@ def run_fastapi():
                 print(f"[API] Loaded image {idx + 1}/{len(request.images)}")
 
             seed = (
-                random.randint(0, MAX_SEED)
-                if request.randomize_seed
-                else request.seed
+                random.randint(0, MAX_SEED) if request.randomize_seed else request.seed
             )
             generator = torch.Generator(device=device).manual_seed(seed)
 
-            mode_str = "style reference mode" if request.style_reference_mode else "batch mode"
+            mode_str = (
+                "style reference mode" if request.style_reference_mode else "batch mode"
+            )
             print(
                 f"[API] Processing {len(pil_images)} images ({mode_str}), seed={seed}"
             )
@@ -353,7 +345,9 @@ def run_fastapi():
                             index=0,
                         )
                     )
-                    print(f"[API] Style reference mode: Returning final image (last of {len(result)})")
+                    print(
+                        f"[API] Style reference mode: Returning final image (last of {len(result)})"
+                    )
             else:
                 # Return all edited images (batch mode)
                 for idx, img in enumerate(result):

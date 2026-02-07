@@ -1,10 +1,11 @@
 # Qwen Image Edit 2511 - EKS Deployment
 
-AI-powered image editing application using the Qwen Vision Language Model, deployed as a two-container architecture on Amazon EKS with GPU acceleration.
+AI-powered image editing using the Qwen Vision Language Model,
+deployed on Amazon EKS with GPU acceleration.
 
 ## Architecture
 
-```
+```text
                            USERS
                              |
                              v
@@ -50,16 +51,17 @@ AI-powered image editing application using the Qwen Vision Language Model, deplo
 
 ### Two-Container Design
 
-| Container | Image Size | GPU | Rebuild Time | Purpose |
-|-----------|-----------|-----|-------------|---------|
-| **Model** (FastAPI) | ~6GB | NVIDIA L40S (48GB VRAM) | 2-3 min | Inference engine |
-| **UI** (Gradio) | ~200MB | None | 30 sec | Interactive frontend |
+| Container           | Image Size | GPU                     | Purpose              |
+| ------------------- | ---------- | ----------------------- | -------------------- |
+| **Model** (FastAPI) | ~6GB       | NVIDIA L40S (48GB VRAM) | Inference engine     |
+| **UI** (Gradio)     | ~200MB     | None                    | Interactive frontend |
 
-Separating UI from model allows fast UI iteration without rebuilding the heavy model container.
+Separating UI from model allows fast UI iteration
+without rebuilding the heavy model container.
 
 ## Deployment Flow
 
-```
+```text
   1. CONFIGURE             2. BUILD                 3. DEPLOY
 
   cp .env.example .env     build-and-push-all.sh    setup-eks-prerequisites.sh
@@ -209,15 +211,16 @@ curl -X POST http://localhost:8000/api/v1/batch/infer \
   }'
 ```
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/v1/health` | GET | Health check with GPU status |
-| `/api/v1/batch/infer` | POST | Batch image inference |
-| `/api/docs` | GET | Swagger UI documentation |
+| Endpoint              | Method | Description                  |
+| --------------------- | ------ | ---------------------------- |
+| `/api/v1/health`      | GET    | Health check with GPU status |
+| `/api/v1/batch/infer` | POST   | Batch image inference        |
+| `/api/docs`           | GET    | Swagger UI documentation     |
 
 ### Batch Testing Script
 
-The included batch script processes all images in `samples_images/` against the FastAPI endpoint:
+The batch script processes all images in `samples_images/`
+against the FastAPI endpoint:
 
 ```bash
 # Port-forward to model service
@@ -236,7 +239,7 @@ python scripts/batch_process_fastapi.py --url http://localhost:8000 \
 
 ## Project Structure
 
-```
+```text
 .
 ├── .env.example                  # Environment config template (cp to .env)
 ├── Dockerfile.model              # Model container (CUDA + FastAPI)
@@ -244,10 +247,10 @@ python scripts/batch_process_fastapi.py --url http://localhost:8000 \
 ├── Makefile                      # Build/deploy/status commands
 ├── requirements-base.txt         # PyTorch, transformers, diffusers
 ├── requirements-app.txt          # FastAPI, Gradio, Pydantic
-├── requirements-local.txt        # UI container dependencies
+├── requirements-ui.txt           # UI container dependencies
 ├── src/
 │   ├── server.py                 # FastAPI model service (port 8000)
-│   └── app_local.py              # Gradio UI (port 7860)
+│   └── app_ui.py                 # Gradio UI (port 7860)
 ├── k8s/
 │   ├── base/
 │   │   ├── config.yaml.example   # Kustomize config template
@@ -279,15 +282,15 @@ python scripts/batch_process_fastapi.py --url http://localhost:8000 \
 
 ## Performance
 
-| Metric | Value |
-|--------|-------|
-| Model Size | 17GB (4-bit quantized) |
-| First Node Boot | 4-5 min (S3 download) |
-| Pod Startup (cached) | 10-15 sec |
-| GPU Memory Usage | ~18GB / 48GB (L40S) |
-| Inference Speed | ~3 sec per step |
-| RAM Required | 20GB |
-| Storage per Node | 20GB (model cache) |
+| Metric               | Value                  |
+| -------------------- | ---------------------- |
+| Model Size           | 17GB (4-bit quantized) |
+| First Node Boot      | 4-5 min (S3 download)  |
+| Pod Startup (cached) | 10-15 sec              |
+| GPU Memory Usage     | ~18GB / 48GB (L40S)    |
+| Inference Speed      | ~3 sec per step        |
+| RAM Required         | 20GB                   |
+| Storage per Node     | 20GB (model cache)     |
 
 ## AWS Requirements
 
@@ -304,20 +307,27 @@ python scripts/batch_process_fastapi.py --url http://localhost:8000 \
 Verify IAM role has S3 read permissions and IRSA is configured.
 
 **ErrImagePull "no match for platform"**
-Image built on Apple Silicon (ARM64) but EKS runs AMD64. All build scripts include `--platform linux/amd64`.
+Image built on Apple Silicon (ARM64) but EKS runs AMD64.
+All build scripts include `--platform linux/amd64`.
 
 **Model not found in cache**
-Wait for DaemonSet to complete. Check: `kubectl logs -n qwen -l app=qwen-model-cache -c download-model`
+Wait for DaemonSet to complete. Check:
+`kubectl logs -n qwen -l app=qwen-model-cache -c download-model`
 
 **Pod stuck in Pending**
 No GPU nodes available. Check: `./scripts/check-gpu-availability.sh`
 
 ## Resources
 
-- [Qwen-Image-Edit-2511-4bit](https://huggingface.co/ovedrive/Qwen-Image-Edit-2511-4bit) (HuggingFace)
-- [Qwen-Image-Edit-2511](https://huggingface.co/Qwen/Qwen-Image-Edit-2511) (Original model)
-- [Amazon EKS User Guide](https://docs.aws.amazon.com/eks/)
+- [Qwen-Image-Edit-2511-4bit][qwen-4bit] (HuggingFace)
+- [Qwen-Image-Edit-2511][qwen-orig] (Original model)
+- [Amazon EKS User Guide][eks-docs]
+
+[qwen-4bit]: https://huggingface.co/ovedrive/Qwen-Image-Edit-2511-4bit
+[qwen-orig]: https://huggingface.co/Qwen/Qwen-Image-Edit-2511
+[eks-docs]: https://docs.aws.amazon.com/eks/
 
 ## License
 
-This deployment configuration is provided as-is. Refer to the Qwen model license for model usage terms.
+This deployment configuration is provided as-is.
+Refer to the Qwen model license for model usage terms.

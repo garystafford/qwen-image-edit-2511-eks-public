@@ -1,27 +1,17 @@
 #!/usr/bin/env python3
 """
-Local Gradio UI that calls remote Qwen model via FastAPI.
+Gradio UI that calls the Qwen model service via FastAPI.
 
-Usage:
-1. Setup environment (first time only):
-   ./setup-local.sh
+In EKS, API_BASE_URL is set to the cluster-internal service DNS.
+For local testing, port-forward the model service first:
 
-2. Port-forward the remote service:
-   kubectl port-forward -n qwen svc/qwen-image-edit 8000:8000
-
-3. Activate environment and run:
-   source .venv-local/bin/activate
-   python app_local.py
-
-4. Access at http://localhost:7860
-
-Note: Requires Python 3.11+ for modern Gradio with better file handling
+    kubectl port-forward -n qwen svc/qwen-model-service 8000:8000
+    python app_ui.py
 """
 
 import base64
 import io
 import os
-import random
 
 import gradio as gr
 import numpy as np
@@ -30,10 +20,7 @@ from PIL import Image
 
 # --- Configuration ---
 # Read API URL from environment variable, fallback to localhost for local development
-API_BASE_URL = os.getenv(
-    "API_BASE_URL",
-    "http://localhost:8000"
-) + "/api/v1"
+API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000") + "/api/v1"
 MAX_SEED = np.iinfo(np.int32).max
 
 
@@ -110,7 +97,9 @@ def call_remote_api(
     }
 
     print(f"[Local] Calling remote API with prompt: '{prompt}'")
-    print(f"[Local] Images: {len(images_data)}, Steps: {num_inference_steps}, Style ref mode: {style_reference_mode}")
+    print(
+        f"[Local] Images: {len(images_data)}, Steps: {num_inference_steps}, Style ref mode: {style_reference_mode}"
+    )
 
     try:
         # Call remote API
@@ -204,7 +193,7 @@ def check_api_health():
             return f"{status_emoji} API Status: {health['status']} | {gpu_emoji} GPU: {'Available' if health['gpu_available'] else 'Unavailable'}"
         else:
             return "❌ API Status: Error"
-    except:
+    except Exception:
         return "❌ API Status: Not Connected (run: kubectl port-forward -n qwen svc/qwen-image-edit 8000:8000)"
 
 
@@ -243,7 +232,7 @@ with gr.Blocks() as demo:
         )
         gr.Markdown(
             "[Learn more](https://huggingface.co/Qwen/Qwen-Image-Edit-2511) about Qwen-Image-Edit-2511.",
-            elem_classes="center"
+            elem_classes="center",
         )
 
         with gr.Row():
@@ -286,14 +275,12 @@ with gr.Blocks() as demo:
 
         with gr.Accordion("Advanced Settings", open=False):
             # API status indicator (updates every 10 seconds)
-            api_status = gr.Markdown(
-                check_api_health(), elem_id="api-status", every=10
-            )
+            api_status = gr.Markdown(check_api_health(), elem_id="api-status", every=10)
 
             style_reference_mode = gr.Checkbox(
                 label="Style Reference Mode",
                 value=True,
-                info="When enabled: all but last image = style references, returns only edited last image. When disabled: each image edited independently."
+                info="When enabled: all but last image = style references, returns only edited last image. When disabled: each image edited independently.",
             )
 
             negative_prompt = gr.Textbox(
@@ -362,9 +349,7 @@ with gr.Blocks() as demo:
 
     # Clear button - resets file upload and preview
     clear_btn.click(
-        fn=lambda: (None, []),
-        inputs=None,
-        outputs=[input_images, input_preview]
+        fn=lambda: (None, []), inputs=None, outputs=[input_images, input_preview]
     )
 
     # Run inference

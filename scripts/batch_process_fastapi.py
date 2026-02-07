@@ -16,15 +16,11 @@ Port-forward to the model service first:
 
 import argparse
 import base64
-import json
-import os
 import sys
 import time
 from pathlib import Path
 
 import requests
-from PIL import Image
-
 
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".webp", ".tiff", ".avif"}
 
@@ -59,14 +55,18 @@ def check_health(base_url: str) -> bool:
         health = resp.json()
         print(f"  Status:     {health['status']}")
         print(f"  Model:      {'loaded' if health['model_loaded'] else 'NOT loaded'}")
-        print(f"  GPU:        {'available' if health['gpu_available'] else 'NOT available'}")
+        print(
+            f"  GPU:        {'available' if health['gpu_available'] else 'NOT available'}"
+        )
         if health.get("gpu_memory_used_gb") is not None:
-            print(f"  GPU Memory: {health['gpu_memory_used_gb']:.1f} / {health['gpu_memory_total_gb']:.1f} GB")
+            print(
+                f"  GPU Memory: {health['gpu_memory_used_gb']:.1f} / {health['gpu_memory_total_gb']:.1f} GB"
+            )
         return health["status"] == "healthy"
     except requests.exceptions.ConnectionError:
         print(f"  Cannot connect to {base_url}")
-        print(f"  Make sure port-forwarding is active:")
-        print(f"    kubectl port-forward -n qwen svc/qwen-model-service 8000:8000")
+        print("  Make sure port-forwarding is active:")
+        print("    kubectl port-forward -n qwen svc/qwen-model-service 8000:8000")
         return False
     except Exception as e:
         print(f"  Health check failed: {e}")
@@ -148,7 +148,9 @@ def main():
         default=DEFAULT_PROMPT,
         help="Editing prompt to apply to all images",
     )
-    parser.add_argument("--seed", type=int, default=42, help="Random seed (default: 42)")
+    parser.add_argument(
+        "--seed", type=int, default=42, help="Random seed (default: 42)"
+    )
     parser.add_argument(
         "--randomize-seed",
         action="store_true",
@@ -156,22 +158,34 @@ def main():
         help="Randomize seed for each image",
     )
     parser.add_argument(
-        "--guidance-scale", type=float, default=3.0, help="Guidance scale (default: 3.0)"
+        "--guidance-scale",
+        type=float,
+        default=3.0,
+        help="Guidance scale (default: 3.0)",
     )
     parser.add_argument(
         "--steps", type=int, default=20, help="Number of inference steps (default: 20)"
     )
     parser.add_argument(
-        "--height", type=int, default=1024, help="Output height in pixels (default: 1024)"
+        "--height",
+        type=int,
+        default=1024,
+        help="Output height in pixels (default: 1024)",
     )
     parser.add_argument(
         "--width", type=int, default=1024, help="Output width in pixels (default: 1024)"
     )
     parser.add_argument(
-        "--timeout", type=int, default=300, help="Request timeout in seconds (default: 300)"
+        "--timeout",
+        type=int,
+        default=300,
+        help="Request timeout in seconds (default: 300)",
     )
     parser.add_argument(
-        "--delay", type=float, default=1.0, help="Delay between images in seconds (default: 1.0)"
+        "--delay",
+        type=float,
+        default=1.0,
+        help="Delay between images in seconds (default: 1.0)",
     )
 
     args = parser.parse_args()
@@ -189,8 +203,7 @@ def main():
 
     # Find image files
     image_files = sorted(
-        f for f in input_dir.iterdir()
-        if f.suffix.lower() in IMAGE_EXTENSIONS
+        f for f in input_dir.iterdir() if f.suffix.lower() in IMAGE_EXTENSIONS
     )
 
     if not image_files:
@@ -251,7 +264,9 @@ def main():
                     out_path = output_dir / out_name
                     save_base64_image(img_out["data"], out_path)
 
-                print(f"OK ({format_time(elapsed)}, seed={result['images'][0]['seed']})")
+                print(
+                    f"OK ({format_time(elapsed)}, seed={result['images'][0]['seed']})"
+                )
                 success_count += 1
                 times.append(elapsed)
             else:

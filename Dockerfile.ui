@@ -7,11 +7,11 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # Install dependencies
-COPY requirements-local.txt .
-RUN pip install --no-cache-dir -r requirements-local.txt
+COPY requirements-ui.txt .
+RUN pip install --no-cache-dir -r requirements-ui.txt
 
 # Copy UI application
-COPY src/app_local.py .
+COPY src/app_ui.py .
 
 # Expose Gradio port
 EXPOSE 7860
@@ -20,4 +20,4 @@ EXPOSE 7860
 ENV API_BASE_URL=http://qwen-model-service.qwen.svc.cluster.local:8000
 
 # Run Gradio UI
-CMD ["python", "app_local.py"]
+CMD ["python", "app_ui.py"]

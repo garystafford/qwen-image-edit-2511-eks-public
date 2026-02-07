@@ -1,0 +1,7 @@
+# Requirements for the Gradio UI container (app_ui.py)
+# No GPU dependencies - all inference happens in the model container
+
+gradio>=5.0.0
+requests>=2.31.0
+pillow>=10.1.0
+numpy>=1.24.0
