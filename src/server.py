@@ -197,6 +197,7 @@ def run_gradio():
 
 def run_fastapi():
     """Run FastAPI on port 8000."""
+    import asyncio
     import base64
     import io
     import random
@@ -291,6 +292,38 @@ def run_fastapi():
             gpu_memory_total_gb=round(gpu_mem_total, 2) if gpu_mem_total else None,
         )
 
+    def _run_inference(
+        pil_images: list,
+        prompt: str,
+        height: int,
+        width: int,
+        negative_prompt: str,
+        num_inference_steps: int,
+        generator: torch.Generator,
+        guidance_scale: float,
+        num_images_per_prompt: int,
+    ) -> list:
+        """Run the diffusion pipeline (blocking). Called via asyncio.to_thread()
+        so the event loop stays free for health checks during inference."""
+        result = pipe(
+            image=pil_images,
+            prompt=prompt,
+            height=height,
+            width=width,
+            negative_prompt=negative_prompt,
+            num_inference_steps=num_inference_steps,
+            generator=generator,
+            true_cfg_scale=guidance_scale,
+            num_images_per_prompt=num_images_per_prompt,
+        ).images
+
+        if torch.cuda.is_available():
+            torch.cuda.synchronize()
+            torch.cuda.empty_cache()
+        gc.collect()
+
+        return result
+
     @app.post("/api/v1/batch/infer", response_model=BatchInferenceResponse)
     async def batch_infer(request: BatchInferenceRequest):
         if pipe is None:
@@ -319,18 +352,19 @@ def run_fastapi():
                 f"[API] Processing {len(pil_images)} images ({mode_str}), seed={seed}"
             )
 
-            # Pass all images to pipeline at once
-            result = pipe(
-                image=pil_images,
-                prompt=request.prompt,
-                height=request.height,
-                width=request.width,
-                negative_prompt=request.negative_prompt,
-                num_inference_steps=request.num_inference_steps,
-                generator=generator,
-                true_cfg_scale=request.guidance_scale,
-                num_images_per_prompt=request.num_images_per_prompt,
-            ).images
+            # Run pipeline in a thread so health checks remain responsive
+            result = await asyncio.to_thread(
+                _run_inference,
+                pil_images,
+                request.prompt,
+                request.height,
+                request.width,
+                request.negative_prompt,
+                request.num_inference_steps,
+                generator,
+                request.guidance_scale,
+                request.num_images_per_prompt,
+            )
 
             print(f"[API] Received {len(result)} output images from pipeline")
 
@@ -359,11 +393,6 @@ def run_fastapi():
                         )
                     )
                 print(f"[API] Batch mode: Returning all {len(result)} images")
-
-            if torch.cuda.is_available():
-                torch.cuda.synchronize()
-                torch.cuda.empty_cache()
-            gc.collect()
 
             return BatchInferenceResponse(
                 success=True,

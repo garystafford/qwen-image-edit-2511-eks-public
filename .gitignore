@@ -384,3 +384,4 @@ interim_images/
 # Kubernetes config with sensitive values
 k8s/base/config.yaml
 k8s/overlays/*/config.yaml
+

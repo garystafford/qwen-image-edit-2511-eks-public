@@ -43,16 +43,17 @@ spec:
               path: /api/v1/health
               port: 8000
             initialDelaySeconds: 120
-            periodSeconds: 15
-            timeoutSeconds: 5
+            periodSeconds: 30
+            timeoutSeconds: 120
+            failureThreshold: 4
           livenessProbe:
             httpGet:
               path: /api/v1/health
               port: 8000
             initialDelaySeconds: 120
-            periodSeconds: 30
-            timeoutSeconds: 10
-            failureThreshold: 20
+            periodSeconds: 60
+            timeoutSeconds: 120
+            failureThreshold: 5
           resources:
             limits:
               nvidia.com/gpu: "1"

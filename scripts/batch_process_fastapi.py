@@ -81,8 +81,14 @@ def process_image(
     height: int,
     width: int,
     timeout: int,
+    max_retries: int = 3,
+    retry_delay: float = 10.0,
 ) -> dict:
-    """Send a single image to the FastAPI inference endpoint."""
+    """Send a single image to the FastAPI inference endpoint.
+
+    Retries on 503 (Service Unavailable) errors, which can occur when the
+    model pod is temporarily restarting or the ALB target is draining.
+    """
     b64_image = image_to_base64(image_path)
 
     payload = {
@@ -97,11 +103,20 @@ def process_image(
         "num_images_per_prompt": 1,
     }
 
-    resp = requests.post(
-        f"{base_url}/api/v1/batch/infer",
-        json=payload,
-        timeout=timeout,
-    )
+    for attempt in range(1, max_retries + 1):
+        resp = requests.post(
+            f"{base_url}/api/v1/batch/infer",
+            json=payload,
+            timeout=timeout,
+        )
+        if resp.status_code == 503 and attempt < max_retries:
+            print(f"503 (retry {attempt}/{max_retries}, waiting {retry_delay:.0f}s)...", end=" ", flush=True)
+            time.sleep(retry_delay)
+            continue
+        resp.raise_for_status()
+        return resp.json()
+
+    # Should not reach here, but just in case
     resp.raise_for_status()
     return resp.json()
 
@@ -184,8 +199,23 @@ def main():
         default=1.0,
         help="Delay between images in seconds (default: 1.0)",
     )
+    parser.add_argument(
+        "--retries",
+        type=int,
+        default=3,
+        help="Max retries on 503 errors (default: 3)",
+    )
+    parser.add_argument(
+        "--retry-delay",
+        type=float,
+        default=10.0,
+        help="Seconds to wait between retries (default: 10.0)",
+    )
 
     args = parser.parse_args()
+
+    # Strip trailing slash to avoid double-slash in URL paths
+    args.url = args.url.rstrip("/")
 
     # Resolve directories relative to project root
     project_root = Path(__file__).resolve().parent.parent
@@ -251,6 +281,8 @@ def main():
                 height=args.height,
                 width=args.width,
                 timeout=args.timeout,
+                max_retries=args.retries,
+                retry_delay=args.retry_delay,
             )
 
             elapsed = time.time() - start

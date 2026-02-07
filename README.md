@@ -352,6 +352,21 @@ Wait for DaemonSet to complete. Check:
 **Pod stuck in Pending**
 No GPU nodes available. Check: `./scripts/check-gpu-availability.sh`
 
+**503 errors or pod restarts during inference**
+The model pod's liveness/readiness probes may time out during long inferences.
+Higher step counts, multiple images, or larger resolutions can push inference
+well beyond the default 120s probe timeout. Increase `timeoutSeconds` in
+`k8s/base/deployment-model.yaml`:
+
+```yaml
+readinessProbe:
+  timeoutSeconds: 300   # increase for longer inferences
+livenessProbe:
+  timeoutSeconds: 300   # must exceed your longest expected inference
+```
+
+Redeploy after changing: `kubectl apply -k k8s/base/`
+
 ## Resources
 
 - [Qwen-Image-Edit-2511-4bit][qwen-4bit] (HuggingFace)
