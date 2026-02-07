@@ -22,19 +22,17 @@ import requests
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".webp", ".tiff", ".avif"}
 
 DEFAULT_PROMPT = (
-    "Convert this exact photo into a Studio Ghibli-style illustration, "
-    "keeping all subjects in the same positions, poses, expressions, clothing, "
-    "camera angle, and background setting exactly as in the original image, "
-    "just redrawn in 2D Ghibli movie style, soft hand-painted shading, clean lines, "
-    "warm colors, gentle cinematic lighting, subtle film-like texture, "
-    "no changes to composition, no added or removed objects."
+    "Restyle each image in a clean illustrative look with sharp line art, "
+    "flat rich colors, soft cel shading, and minimal textured backgrounds. "
+    "Extend or generate additional background as needed to fill a the new canvas, "
+    "without cropping or changing the original subject, pose, or framing."
 )
 
 DEFAULT_NEGATIVE_PROMPT = (
-    "blurry, out of focus, low resolution, low detail, low sharpness, double-image, artifacts, "
-    "soft edges, motion blur, depth of field blur, hazy, unclear, artifact, noisy"
+    "blurry, out of focus, low resolution, low detail, low sharpness, "
+    "double-image, soft edges, motion blur, depth of field blur, hazy, unclear, "
+    "artifact, noisy, pixelated, compression artifacts, 'AI generated' text and surrounding box"
 )
-
 
 def image_to_base64(image_path: Path) -> str:
     """Read an image file and return its base64-encoded string."""
