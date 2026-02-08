@@ -265,11 +265,18 @@ python scripts/batch_process_fastapi.py \
   --url https://your-domain.example.com \
   --prompt "Make it a watercolor painting"
 
-# All options
+# With options
 python scripts/batch_process_fastapi.py \
   --url https://your-domain.example.com \
   --steps 30 --guidance-scale 5.0 --seed 123 \
   --output ./results
+
+# Example from blog post
+python scripts/batch_process_fastapi.py \
+    --url https://your-domain.example.com \
+    --prompt "Convert this image into clean black-and-white Japanese manga line art. Crisp inked outlines, no shading or color. Extend or generate additional background as needed to fill the 1:1 aspect-ratio canvas." \
+    --steps 30 --guidance-scale 5.0 --seed 123 \
+    --input ./samples_images/ --output ./output_images/
 ```
 
 ## Project Structure
@@ -360,9 +367,20 @@ well beyond the default 120s probe timeout. Increase `timeoutSeconds` in
 
 ```yaml
 readinessProbe:
-  timeoutSeconds: 300   # increase for longer inferences
+  timeoutSeconds: 300 # increase for longer inferences
 livenessProbe:
-  timeoutSeconds: 300   # must exceed your longest expected inference
+  timeoutSeconds: 300 # must exceed your longest expected inference
+```
+
+Redeploy after changing: `kubectl apply -k k8s/base/`
+
+**504 Gateway Timeout from ALB**
+The ALB idle timeout (default 60s) may be shorter than your inference time.
+The ingress is configured with `idle_timeout.timeout_seconds=300`. If you
+need longer, update the value in `k8s/base/ingress.yaml`:
+
+```yaml
+alb.ingress.kubernetes.io/load-balancer-attributes: idle_timeout.timeout_seconds=600
 ```
 
 Redeploy after changing: `kubectl apply -k k8s/base/`

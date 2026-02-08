@@ -91,8 +91,9 @@ def process_image(
 ) -> dict:
     """Send a single image to the FastAPI inference endpoint.
 
-    Retries on 503 (Service Unavailable) errors, which can occur when the
-    model pod is temporarily restarting or the ALB target is draining.
+    Retries on 503 (Service Unavailable) and 504 (Gateway Timeout) errors,
+    which can occur when the model pod is restarting, the ALB target is
+    draining, or inference exceeds the ALB idle timeout.
     """
     b64_image = image_to_base64(image_path)
 
@@ -115,8 +116,8 @@ def process_image(
             json=payload,
             timeout=timeout,
         )
-        if resp.status_code == 503 and attempt < max_retries:
-            print(f"503 (retry {attempt}/{max_retries}, waiting {retry_delay:.0f}s)...", end=" ", flush=True)
+        if resp.status_code in (503, 504) and attempt < max_retries:
+            print(f"{resp.status_code} (retry {attempt}/{max_retries}, waiting {retry_delay:.0f}s)...", end=" ", flush=True)
             time.sleep(retry_delay)
             continue
         resp.raise_for_status()
